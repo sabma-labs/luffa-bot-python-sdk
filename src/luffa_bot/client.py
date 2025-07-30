@@ -1,4 +1,6 @@
 from __future__ import annotations
+import hashlib
+import ast
 import json
 from dataclasses import asdict, is_dataclass
 from typing import Any, Dict, List, Literal, cast
@@ -27,26 +29,110 @@ class AsyncLuffaClient:
         return resp
 
     @staticmethod
+    def _coerce_to_dict(raw: Any) -> dict | None:
+        """
+        Robustly convert a raw message item into a dict.
+        Handles:
+          - dict directly
+          - JSON string (once or twice encoded)
+          - single-quoted dict-like strings (ast.literal_eval fallback)
+        """
+        if isinstance(raw, dict):
+            return raw
+
+        if isinstance(raw, bytes):
+            try:
+                raw = raw.decode("utf-8", errors="replace")
+            except Exception:
+                return None
+
+        if isinstance(raw, str):
+            s = raw.strip()
+
+            # Try json.loads once or twice
+            for _ in range(2):
+                try:
+                    obj = json.loads(s)
+                    if isinstance(obj, dict):
+                        return obj
+                    # Sometimes first loads returns another JSON string
+                    if isinstance(obj, str):
+                        s = obj
+                        continue
+                    # If it’s a list with a single dict
+                    if isinstance(obj, list) and obj and isinstance(obj[0], dict):
+                        return obj[0]
+                except Exception:
+                    break
+
+            # Last resort: single-quoted Python dict strings
+            try:
+                obj2 = ast.literal_eval(s)
+                if isinstance(obj2, dict):
+                    return obj2
+            except Exception:
+                return None
+
+        return None
+
+    @staticmethod
+    def _extract_text(obj: dict) -> str:
+        # Primary
+        text = obj.get("text")
+        if text:
+            return str(text)
+        # Fallbacks some deployments use
+        for key in ("msg", "content", "message"):
+            v = obj.get(key)
+            if isinstance(v, str) and v.strip():
+                return v.strip()
+        # If urlLink is present and text missing, surface it
+        url = obj.get("urlLink")
+        if isinstance(url, str) and url.strip():
+            return url.strip()
+        return ""
+
+    @staticmethod
+    def _extract_msg_id(obj: dict, raw_fingerprint: str) -> str:
+        # Primary and common variants
+        for key in ("msgId", "msgid", "mid", "message_id", "id"):
+            v = obj.get(key)
+            if v is not None and str(v).strip():
+                return str(v)
+        # Synthesize a stable id if missing so dedupe still works
+        return hashlib.sha1(raw_fingerprint.encode("utf-8")).hexdigest()
+
+    @staticmethod
+    def _fingerprint_for_dedupe(obj: dict) -> str:
+        try:
+            return json.dumps(obj, sort_keys=True, ensure_ascii=False)
+        except Exception:
+            return repr(obj)
+
+    @staticmethod
     def _parse_messages(raw_messages: List[Any]) -> List[IncomingMessage]:
         parsed: List[IncomingMessage] = []
-        for raw in raw_messages:
-            try:
-                obj = json.loads(raw) if isinstance(raw, str) else raw
-            except Exception:
-                try:
-                    obj = json.loads(json.loads(raw))
-                except Exception:
-                    continue
+        for raw in (raw_messages or []):
+            obj = AsyncLuffaClient._coerce_to_dict(raw)
+            if not isinstance(obj, dict):
+                # skip unparseable entries
+                continue
+
+            fp = AsyncLuffaClient._fingerprint_for_dedupe(obj)
+            text = AsyncLuffaClient._extract_text(obj)
+            msg_id = AsyncLuffaClient._extract_msg_id(obj, fp)
+
             parsed.append(
                 IncomingMessage(
-                    atList=obj.get("atList", []),
-                    text=obj.get("text", ""),
+                    atList=obj.get("atList", []) or [],
+                    text=text,
                     urlLink=obj.get("urlLink"),
-                    msgId=str(obj.get("msgId", "")),
+                    msgId=str(msg_id),
                     uid=obj.get("uid"),
                 )
             )
         return parsed
+
 
     async def receive(self) -> List[IncomingEnvelope]:
         resp = await self._post(RECEIVE_URL, {"secret": self.robot_key})
