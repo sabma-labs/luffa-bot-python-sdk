@@ -28,7 +28,7 @@ import asyncio
 import luffa_bot
 
 # Set the robot secret key
-duffa_bot.robot_key = "YOUR_ROBOT_SECRET"
+luffa_bot.robot_key = "YOUR_ROBOT_SECRET"
 
 async def main():
     # Poll once for messages
