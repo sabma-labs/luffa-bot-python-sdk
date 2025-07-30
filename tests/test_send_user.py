@@ -2,7 +2,8 @@ import json
 import pytest
 import respx
 import httpx
-from luffa.client import AsyncLuffaClient, SEND_URL
+import json
+from luffa_bot.client import AsyncLuffaClient, SEND_URL
 
 pytestmark = pytest.mark.asyncio
 
@@ -12,7 +13,8 @@ async def test_send_to_user_sends_json_string_msg():
     client = AsyncLuffaClient("secret")
     await client.send_to_user("user-1", "Hi")
     assert route.called
-    payload = route.calls.last.request.json()
+    req = route.calls.last.request
+    payload = json.loads(req.content.decode())
     assert payload["secret"] == "secret"
     assert payload["uid"] == "user-1"
     inner = json.loads(payload["msg"])

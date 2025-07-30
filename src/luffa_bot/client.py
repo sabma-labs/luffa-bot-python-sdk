@@ -1,6 +1,7 @@
 from __future__ import annotations
 import json
-from typing import Any, Dict, List, Optional
+from dataclasses import asdict, is_dataclass
+from typing import Any, Dict, List, Literal, cast
 import httpx
 from .models import (
     IncomingEnvelope, IncomingMessage,
@@ -61,21 +62,46 @@ class AsyncLuffaClient:
             data = data["data"]
 
         envelopes: List[IncomingEnvelope] = []
-        for item in (data or []):
+        for raw_item in (data or []):
+            # If the API returned a string, parse it into a dict
+            if isinstance(raw_item, str):
+                try:
+                    item = json.loads(raw_item)
+                except Exception:
+                    # Skip if it's not valid JSON
+                    continue
+            else:
+                item = raw_item
+
+            if not isinstance(item, dict):
+                continue  # Skip if it's still not a dict
+
             uid = str(item.get("uid", ""))
             count = int(item.get("count", 0))
-            typ = int(item.get("type", 0))
+
+            # Narrow the type field to Literal[0,1] if using strict typing
+            typ_raw = int(item.get("type", 0))
+            typ: Literal[0, 1] = 0 if typ_raw == 0 else 1
+
             raw_msgs = item.get("message", []) or []
             messages = self._parse_messages(raw_msgs)
+
             envelopes.append(
                 IncomingEnvelope(uid=uid, count=count, messages=messages, type=typ)
             )
         return envelopes
 
     async def send_to_user(self, uid: str, payload: str | TextMessagePayload) -> None:
-        msg_obj = {"text": payload} if isinstance(payload, str) else {
-            k: v for k, v in payload.__dict__.items() if v is not None
-        }
+        # Convert payload to a plain dict ready for JSON encoding
+        if isinstance(payload, str):
+            msg_obj = {"text": payload}
+        elif is_dataclass(payload):
+            # asdict handles nested dataclasses automatically
+            msg_obj = {k: v for k, v in asdict(payload).items() if v is not None}
+        else:
+            # Fallback (shouldn't be needed if you always pass dataclass or str)
+            msg_obj = {k: v for k, v in payload.__dict__.items() if v is not None}
+
         body = {"secret": self.robot_key, "uid": str(uid), "msg": json.dumps(msg_obj)}
         resp = await self._post(SEND_URL, body)
         if resp.status_code != 200:
@@ -91,9 +117,14 @@ class AsyncLuffaClient:
         if isinstance(payload, str):
             msg_obj = {"text": payload}
         else:
-            if payload.confirm and payload.button:
+            # Enforce exclusivity before serializing
+            if getattr(payload, "confirm", None) and getattr(payload, "button", None):
                 raise ValueError("Only one of 'confirm' or 'button' may be set.")
-            msg_obj = {k: v for k, v in payload.__dict__.items() if v is not None}
+
+            if is_dataclass(payload):
+                msg_obj = {k: v for k, v in asdict(payload).items() if v is not None}
+            else:
+                msg_obj = {k: v for k, v in payload.__dict__.items() if v is not None}
 
         body = {
             "secret": self.robot_key,

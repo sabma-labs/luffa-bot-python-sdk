@@ -2,8 +2,9 @@ import json
 import pytest
 import respx
 import httpx
-from luffa.client import AsyncLuffaClient, SEND_GROUP_URL
-from luffa.models import GroupMessagePayload, SimpleButton
+import json 
+from luffa_bot.client import AsyncLuffaClient, SEND_GROUP_URL
+from luffa_bot.models import GroupMessagePayload, SimpleButton
 
 pytestmark = pytest.mark.asyncio
 
@@ -18,7 +19,8 @@ async def test_send_group_with_buttons():
     )
     await client.send_to_group("group-1", payload, message_type=2)
     assert route.called
-    body = route.calls.last.request.json()
+    req = route.calls.last.request
+    body = json.loads(req.content.decode())
     assert body["type"] == "2"
     inner = json.loads(body["msg"])
     assert inner["text"] == "Choose:"

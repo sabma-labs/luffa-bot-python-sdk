@@ -1,8 +1,8 @@
 import pytest
 import respx
 import httpx
-from luffa.client import AsyncLuffaClient
-from luffa.client import RECEIVE_URL
+from luffa_bot.client import AsyncLuffaClient
+from luffa_bot.client import RECEIVE_URL
 
 pytestmark = pytest.mark.asyncio
 
