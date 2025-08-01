@@ -132,4 +132,4 @@ luffa-bot send-group --uid <GROUP_ID> --text "Hi group" --with-buttons
 
 ## License
 
-MIT License.
+Apache License 2.0
