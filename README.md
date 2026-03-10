@@ -1,5 +1,9 @@
 # Luffa Bot Python SDK
 
+[![PyPI version](https://img.shields.io/pypi/v/luffa-bot-python-sdk.svg)](https://pypi.org/project/luffa-bot-python-sdk/)
+[![Python](https://img.shields.io/pypi/pyversions/luffa-bot-python-sdk.svg)](https://pypi.org/project/luffa-bot-python-sdk/)
+[![License](https://img.shields.io/pypi/l/luffa-bot-python-sdk.svg)](https://github.com/sabma-labs/luffa-bot-python-sdk/blob/main/LICENSE)
+
 Async, OpenAI-style SDK for building bots for the **Luffa messaging platform**.
 
 ## Features
@@ -19,6 +23,8 @@ Async, OpenAI-style SDK for building bots for the **Luffa messaging platform**.
 pip install luffa-bot-python-sdk
 ```
 
+Requires Python 3.9+.
+
 ---
 
 ## Quickstart
@@ -27,7 +33,7 @@ pip install luffa-bot-python-sdk
 import asyncio
 import luffa_bot
 
-# Set the robot secret key
+# Set the robot secret key (or use LUFFA_ROBOT_SECRET env var)
 luffa_bot.robot_key = "YOUR_ROBOT_SECRET"
 
 async def main():
@@ -66,7 +72,7 @@ asyncio.run(luffa_bot.run(handler, interval=1.0, concurrency=5))
 
 ### Features of `run()`
 
-* Automatic deduplication by `msgId`
+* Automatic deduplication by `msgId` (FIFO-capped memory)
 * Configurable polling interval
 * Concurrency limit (process multiple messages at once)
 * Middleware and error hook support
@@ -118,9 +124,33 @@ luffa-bot send-group --uid <GROUP_ID> --text "Hi group" --with-buttons
 
 ## Development
 
-* **Tests:** Run `pytest` (uses `pytest-asyncio` + `respx`)
-* **Lint:** Run `ruff check .`
-* **Type-check:** Run `mypy .`
+```bash
+pip install -e ".[dev]"
+```
+
+* **Tests:** `pytest`
+* **Lint:** `ruff check .`
+* **Type-check:** `mypy .`
+
+---
+
+## Changelog
+
+### 0.1.1 (2026-03-05)
+
+* **Fix:** `_ensure_client()` was recreating the `httpx.AsyncClient` (and leaking the old connection pool) on every API call. Connection pooling now works correctly across calls.
+* **Fix:** Dedupe eviction used `set.pop()` (arbitrary removal). Now uses FIFO eviction via `deque` so oldest IDs are dropped first.
+* **Fix:** CLI `send` and `send-group` commands now properly close the HTTP client on exit.
+* **Fix:** GitHub Actions workflow directory renamed from `workflow/` to `workflows/` — CI/CD was silently not running.
+* **Security:** Removed unused dependencies `anyio` and `pydantic` from `install_requires` (unnecessary install footprint).
+* **Compat:** Replaced deprecated `asyncio.get_event_loop()` with `asyncio.get_running_loop()` in example bot.
+* Added `__version__` export (`luffa_bot.__version__`).
+
+### 0.1.0 (initial release)
+
+* Initial async SDK with `receive()`, `send_to_user()`, `send_to_group()`, and `run()`.
+* Middleware pipeline, deduplication, concurrency control.
+* CLI entry point (`luffa-bot`).
 
 ---
 

@@ -2,7 +2,6 @@ import json
 import pytest
 import respx
 import httpx
-import json
 from luffa_bot.client import AsyncLuffaClient, SEND_URL
 
 pytestmark = pytest.mark.asyncio

@@ -44,21 +44,26 @@ async def main_async():
 
     elif args.cmd == "send":
         client = AsyncLuffaClient(secret)
-        await client.send_to_user(args.uid, args.text)
-        print("Sent.")
+        try:
+            await client.send_to_user(args.uid, args.text)
+            print("Sent.")
+        finally:
+            await client.aclose()
 
     elif args.cmd == "send-group":
         client = AsyncLuffaClient(secret)
-        if args.with_buttons:
-            payload = GroupMessagePayload(
-                text=args.text,
-                button=[SimpleButton(name="OK", selector="ok", isHidden=0)],
-                # dismissType optional
-            )
-            await client.send_to_group(args.uid, payload, message_type=2)
-        else:
-            await client.send_to_group(args.uid, args.text, message_type=1)
-        print("Sent.")
+        try:
+            if args.with_buttons:
+                payload = GroupMessagePayload(
+                    text=args.text,
+                    button=[SimpleButton(name="OK", selector="ok", isHidden=0)],
+                )
+                await client.send_to_group(args.uid, payload, message_type=2)
+            else:
+                await client.send_to_group(args.uid, args.text, message_type=1)
+            print("Sent.")
+        finally:
+            await client.aclose()
     else:
         parser.print_help()
 

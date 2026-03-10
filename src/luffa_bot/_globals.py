@@ -6,8 +6,9 @@ _robot_key: str | None = None
 
 def set_robot_key(key: str | None):
     global _robot_key, _default_client
-    _robot_key = key
-    _default_client = None  # reset so we re-create with new key
+    if key != _robot_key:
+        _robot_key = key
+        _default_client = None  # reset so we re-create with new key
 
 def get_default_client() -> AsyncLuffaClient:
     global _default_client, _robot_key

@@ -67,11 +67,11 @@ async def logging_middleware(msg, env, client: AsyncLuffaClient, nxt):
 
 
 async def timing_middleware(msg, env, client: AsyncLuffaClient, nxt):
-    start = asyncio.get_event_loop().time()
+    start = asyncio.get_running_loop().time()
     try:
         await nxt(msg, env, client)
     finally:
-        dur = (asyncio.get_event_loop().time() - start) * 1000.0
+        dur = (asyncio.get_running_loop().time() - start) * 1000.0
         logger.info("Handled in %.1f ms", dur)
 
 

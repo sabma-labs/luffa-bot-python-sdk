@@ -2,7 +2,6 @@ import json
 import pytest
 import respx
 import httpx
-import json 
 from luffa_bot.client import AsyncLuffaClient, SEND_GROUP_URL
 from luffa_bot.models import GroupMessagePayload, SimpleButton
 

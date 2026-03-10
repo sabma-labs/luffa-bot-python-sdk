@@ -1,5 +1,6 @@
 from __future__ import annotations
 import asyncio
+from collections import deque
 from typing import Awaitable, Callable, List, Optional, Set
 
 from .client import AsyncLuffaClient
@@ -65,6 +66,7 @@ async def run(
     sem = asyncio.Semaphore(concurrency)
     middlewares = middleware or []
     seen: Set[str] = set()
+    seen_order: deque[str] = deque()
 
     async def process(msg: IncomingMessage, env: IncomingEnvelope) -> None:
         try:
@@ -90,9 +92,10 @@ async def run(
                         if msg.msgId in seen:
                             continue
                         seen.add(msg.msgId)
+                        seen_order.append(msg.msgId)
                         if len(seen) > max_seen_ids:
-                            # Prevent unbounded growth; drop an arbitrary element
-                            seen.pop()
+                            # Evict oldest entry to prevent unbounded growth
+                            seen.discard(seen_order.popleft())
                     tasks.append(asyncio.create_task(process(msg, env)))
             if tasks:
                 await asyncio.gather(*tasks)
