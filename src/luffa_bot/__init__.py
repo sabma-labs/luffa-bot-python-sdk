@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 Luffa Bot Python SDK (Async)
 
