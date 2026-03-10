@@ -33,7 +33,7 @@ from .models import (
 )
 from .exceptions import LuffaError
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 
 robot_key: str | None = None  #: Global API key, similar to `openai.api_key`
 

@@ -136,7 +136,7 @@ pip install -e ".[dev]"
 
 ## Changelog
 
-### 0.1.1 (2026-03-05)
+### 0.1.2 (2026-03-10)
 
 * **Fix:** `_ensure_client()` was recreating the `httpx.AsyncClient` (and leaking the old connection pool) on every API call. Connection pooling now works correctly across calls.
 * **Fix:** Dedupe eviction used `set.pop()` (arbitrary removal). Now uses FIFO eviction via `deque` so oldest IDs are dropped first.
@@ -145,6 +145,10 @@ pip install -e ".[dev]"
 * **Security:** Removed unused dependencies `anyio` and `pydantic` from `install_requires` (unnecessary install footprint).
 * **Compat:** Replaced deprecated `asyncio.get_event_loop()` with `asyncio.get_running_loop()` in example bot.
 * Added `__version__` export (`luffa_bot.__version__`).
+
+### 0.1.1
+
+* Minor fixes and improvements.
 
 ### 0.1.0 (initial release)
 
